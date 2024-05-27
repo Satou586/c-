@@ -1,0 +1,160 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <cstdlib>
+#include <algorithm>
+#include <string>
+#include <Windows.h>
+
+using namespace std;
+
+struct Headler               //структура метаданных
+{
+    int id = 0;
+    int PayloadSize = 0;
+    int actualLength = 0;
+};
+
+void generateDataFile(const string& filename, int dataSize, int choice)
+// генерация файла, контейнерами, конструкция на элс-ифа, лайбери для работы с файлами эфстрим
+{
+	ofstream outFile(filename,ios::binary);
+
+	if (!outFile)
+	{
+		cout << "Cannot open file!" << endl;
+		return;
+    }
+
+	if (choice == 0)
+	{
+		vector<int> data(dataSize);
+		for (int i = 0; i < dataSize; ++i)
+		{
+            data[i] = rand() % 100;  // Генерация случайных int данных
+		}
+        outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(int));
+    }
+	else if (choice == 1)
+	{
+		vector<float> data(dataSize);
+		for (int i = 0; i < dataSize; ++i)
+		{
+            data[i] = static_cast<float>(rand()) / RAND_MAX * 100;  // Генерация случайных float данных
+        }
+        outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(float));
+    }
+	else if (choice == 2)
+	{
+		vector<char> data(dataSize);
+		for (int i = 0; i < dataSize; ++i)
+		{
+			data[i] = 'A' + rand() % 26;  // Генерация случайных char данных
+        }
+        outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(char));
+    }
+    outFile.close();
+}
+
+void splitFile(const string& inputFilename, const string& outputPrefix, int clusterSize)
+{
+	ifstream inFile(inputFilename,ios::binary);
+	if (!inFile)
+	{
+		cout << "Cannot open input file!" << endl;
+        return;
+    }
+
+    int id = 0;
+	while (!inFile.eof())
+	{
+		vector<char> buffer(clusterSize);
+        inFile.read(buffer.data(), clusterSize);
+		streamsize bytesRead = inFile.gcount();
+
+		if (bytesRead > 0)
+		{
+            Headler headler;
+            headler.id = id++;
+            headler.PayloadSize = clusterSize;
+            headler.actualLength = static_cast<int>(bytesRead);
+
+			ofstream outFile(outputPrefix +to_string(headler.id) + ".bin",ios::binary); // +string headler.id те самые 12 байт
+			if (!outFile)
+			{
+				cout << "Cannot open output file!" << endl;
+				return;
+			}
+
+			outFile.write(reinterpret_cast<const char*>(&headler), sizeof(Headler));
+			outFile.write(buffer.data(), bytesRead);
+			outFile.close();
+		}
+	}
+
+	inFile.close();
+}
+
+void restoreFile(const string& outputFilename, const string& inputPrefix, int numClusters)
+{
+	vector<int> indices(numClusters);
+	for (int i = 0; i < numClusters; ++i)
+	{
+		indices[i] = i;
+	}
+
+	random_shuffle(indices.begin(), indices.end());
+
+	ofstream outFile(outputFilename,ios::binary);
+	if (!outFile)
+	{
+		cout << "Cannot open output file!" << endl;
+		return;
+	}
+
+	for (int i = 0; i < numClusters; ++i)
+	{
+		ifstream inFile(inputPrefix +to_string(indices[i]) + ".bin",ios::binary);
+		if (!inFile)
+		{
+			cout << "Cannot open input file!" << endl;
+			return;
+		}
+
+		Headler headler;
+		inFile.read(reinterpret_cast<char*>(&headler), sizeof(Headler));
+
+		vector<char> buffer(headler.actualLength);
+		inFile.read(buffer.data(), headler.actualLength);
+		outFile.write(buffer.data(), headler.actualLength);
+
+		inFile.close();
+	}
+
+	outFile.close();
+}
+
+int main()
+{
+	SetConsoleCP(1251); SetConsoleOutputCP(1251);   // раша ленгвич
+	string filename = "data.bin";            // имя генерируемого файла
+	int dataSize, choice;
+    cout << "Размер: ";
+    cin >> dataSize;
+    cout << "Тип данных(0 - int, 1 - float, 2 - char): ";
+    cin >> choice;
+	int clusterSize = 20;         // размер кластера (+12байт на метаданные
+
+	int elementSize = (choice == 0) ? sizeof(int) : (choice == 1) ? sizeof(float) : sizeof(char);
+
+	int numClusters = (dataSize * elementSize + clusterSize - 1) / clusterSize;
+
+
+	generateDataFile(filename, dataSize, choice);        // генерация файла
+
+	splitFile(filename, "cluster_", clusterSize);             //расщепление
+
+    restoreFile("restored_data.bin", "cluster_", numClusters);    // сборка
+
+    return 0;
+}
