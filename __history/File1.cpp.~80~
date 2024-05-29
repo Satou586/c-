@@ -28,15 +28,17 @@ void generateDataFile(const string& filename, int dataSize, int choice)
 
 	if (choice == 0)
 	{
+        dataSize/=4 ;
 		vector<int> data(dataSize);
 		for (int i = 0; i < dataSize; ++i)
 		{
-            data[i] = rand() % 100;  // Генерация случайных int данных
+			data[i] = rand() % 100;  // Генерация случайных int данных
 		}
-        outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(int));
+		outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(int));
     }
 	else if (choice == 1)
 	{
+        dataSize/=4 ;
 		vector<float> data(dataSize);
 		for (int i = 0; i < dataSize; ++i)
 		{
@@ -139,13 +141,13 @@ int main()
 	SetConsoleCP(1251); SetConsoleOutputCP(1251);   // раша ленгвич
 	string filename = "data.bin";            // имя генерируемого файла
 	int dataSize, choice;
-    cout << "Размер: ";
+	cout << "Размер: ";
     cin >> dataSize;
     cout << "Тип данных(0 - int, 1 - float, 2 - char): ";
     cin >> choice;
 	int clusterSize = 20;         // размер кластера (+12байт на метаданные
 
-	int elementSize = (choice == 0) ? (sizeof(int)/4) : (choice == 1) ? sizeof(float) : sizeof(char);
+	int elementSize = (choice == 0) ? sizeof(int) : (choice == 1) ? sizeof(float) : sizeof(char);
 
 	int numClusters = (dataSize * elementSize + clusterSize - 1) / clusterSize;
 

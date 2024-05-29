@@ -24,36 +24,38 @@ void generateDataFile(const string& filename, int dataSize, int choice)
 	{
 		cout << "Cannot open file!" << endl;
 		return;
-    }
+	}
 
 	if (choice == 0)
 	{
+		dataSize/=4 ;
 		vector<int> data(dataSize);
 		for (int i = 0; i < dataSize; ++i)
 		{
-            data[i] = rand() % 100;  // Генерация случайных int данных
+			data[i] = rand() % 100;  // Генерация случайных int данных
 		}
-        outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(int));
-    }
+		outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(int));
+	}
 	else if (choice == 1)
 	{
+		dataSize/=4 ;
 		vector<float> data(dataSize);
 		for (int i = 0; i < dataSize; ++i)
 		{
-            data[i] = static_cast<float>(rand()) / RAND_MAX * 100;  // Генерация случайных float данных
-        }
-        outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(float));
-    }
+			data[i] = static_cast<float>(rand()) / RAND_MAX * 100;  // Генерация случайных float данных
+		}
+		outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(float));
+	}
 	else if (choice == 2)
 	{
 		vector<char> data(dataSize);
 		for (int i = 0; i < dataSize; ++i)
 		{
 			data[i] = 'A' + rand() % 26;  // Генерация случайных char данных
-        }
+		}
         outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(char));
-    }
-    outFile.close();
+	}
+	outFile.close();
 }
 
 void splitFile(const string& inputFilename, const string& outputPrefix, int clusterSize)
@@ -62,19 +64,19 @@ void splitFile(const string& inputFilename, const string& outputPrefix, int clus
 	if (!inFile)
 	{
 		cout << "Cannot open input file!" << endl;
-        return;
-    }
+		return;
+	}
 
-    int id = 0;
+	int id = 0;
 	while (!inFile.eof())
 	{
 		vector<char> buffer(clusterSize);
-        inFile.read(buffer.data(), clusterSize);
+		inFile.read(buffer.data(), clusterSize);
 		streamsize bytesRead = inFile.gcount();
 
 		if (bytesRead > 0)
 		{
-            Headler headler;
+			Headler headler;
             headler.id = id++;
             headler.PayloadSize = clusterSize;
             headler.actualLength = static_cast<int>(bytesRead);
@@ -139,17 +141,55 @@ int main()
 	SetConsoleCP(1251); SetConsoleOutputCP(1251);   // раша ленгвич
 	string filename = "data.bin";            // имя генерируемого файла
 	int dataSize, choice;
-    cout << "Размер: ";
+	cout << "Размер: ";
     cin >> dataSize;
     cout << "Тип данных(0 - int, 1 - float, 2 - char): ";
     cin >> choice;
 	int clusterSize = 20;         // размер кластера (+12байт на метаданные
 
+	int elementSize = (choice == 0) ? sizeof(int) : (choice == 1) ? sizeof(float) : sizeof(char);
+
+	int numClusters = (dataSize * elementSize + clusterSize - 1) / clusterSize;
 
 
-    int numClusters = (dataSize * elementSize + clusterSize - 1) / clusterSize;
+ofstream outFile(filename,ios::binary);
 
-	generateDataFile(filename, dataSize, choice);        // генерация файла
+	if (!outFile)
+	{
+		cout << "Cannot open file!" << endl;
+		return;
+	}
+
+	if (choice == 0)
+	{
+		dataSize/=4 ;
+		vector<int> data(dataSize);
+		for (int i = 0; i < dataSize; ++i)
+		{
+			data[i] = rand() % 100;  // Генерация случайных int данных
+		}
+		outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(int));
+	}
+	else if (choice == 1)
+	{
+		dataSize/=4 ;
+		vector<float> data(dataSize);
+		for (int i = 0; i < dataSize; ++i)
+		{
+			data[i] = static_cast<float>(rand()) / RAND_MAX * 100;  // Генерация случайных float данных
+		}
+		outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(float));
+	}
+	else if (choice == 2)
+	{
+		vector<char> data(dataSize);
+		for (int i = 0; i < dataSize; ++i)
+		{
+			data[i] = 'A' + rand() % 26;  // Генерация случайных char данных
+		}
+        outFile.write(reinterpret_cast<const char*>(data.data()), dataSize * sizeof(char));
+	}
+	outFile.close();      // генерация файла
 
 	splitFile(filename, "cluster_", clusterSize);             //расщепление
 
@@ -157,4 +197,3 @@ int main()
 
     return 0;
 }
-
